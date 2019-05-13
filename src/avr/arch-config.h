@@ -1125,6 +1125,131 @@ static inline void buttons_init(void) {
 }
 
 
+#elif CONFIG_HARDWARE_VARIANT==10
+/* ---------- Hardware configuration: Sgw32 sd2iec 1.x , with buttons ---------- */
+#  define HAVE_SD
+#  define SD_CHANGE_HANDLER     ISR(INT0_vect)
+#  define SD2_CHANGE_HANDLER    ISR(INT2_vect)
+#  define SD_SUPPLY_VOLTAGE     (1L<<18)
+
+/* 250kHz slow, 2MHz fast */
+#  define SPI_DIVISOR_SLOW 32
+#  define SPI_DIVISOR_FAST 4
+
+static inline void sdcard_interface_init(void) {
+  DDRD  &= ~_BV(PD2);
+  PORTD |=  _BV(PD2);
+  DDRD  &= ~_BV(PD6);
+  PORTD |=  _BV(PD6);
+  EICRA |=  _BV(ISC00);
+  EIMSK |=  _BV(INT0);
+#ifdef CONFIG_TWINSD
+  PORTD |=  _BV(PD3); // CS
+  DDRD  |=  _BV(PD3); // CS
+  DDRC  &= ~_BV(PC7); // WP
+  PORTC |=  _BV(PC7); // WP
+  DDRB  &= ~_BV(PB2); // Detect
+  PORTB |=  _BV(PB2); // Detect
+  EICRA |=  _BV(ISC20); // Change interrupt
+  EIMSK |=  _BV(INT2);  // Change interrupt
+#endif
+}
+
+static inline uint8_t sdcard_detect(void) {
+  return !(PIND & _BV(PD2));
+}
+
+static inline uint8_t sdcard_wp(void) {
+  return PIND & _BV(PD6);
+}
+
+static inline uint8_t sdcard2_detect(void) {
+  return !(PINB & _BV(PB2));
+}
+
+static inline uint8_t sdcard2_wp(void) {
+  return PINC & _BV(PC7);
+}
+
+static inline __attribute__((always_inline)) void sdcard2_set_ss(uint8_t state) {
+  if (state)
+    PORTD |= _BV(PD3);
+  else
+    PORTD &= ~_BV(PD3);
+}
+
+static inline uint8_t device_hw_address(void) {
+  return 8 + !(PIND & _BV(PD7)) + 2*!(PIND & _BV(PD5));
+}
+
+static inline void device_hw_address_init(void) {
+  DDRD  &= ~(_BV(PD7)|_BV(PD5));
+  PORTD |=   _BV(PD7)|_BV(PD5);
+}
+
+static inline void leds_init(void) {
+  DDRC |= _BV(PC0);
+  DDRC |= _BV(PC1);
+}
+
+static inline __attribute__((always_inline)) void set_busy_led(uint8_t state) {
+  if (state)
+    PORTC |= _BV(PC0);
+  else
+    PORTC &= ~_BV(PC0);
+}
+
+static inline __attribute__((always_inline)) void set_dirty_led(uint8_t state) {
+  if (state)
+    PORTC |= _BV(PC1);
+  else
+    PORTC &= ~_BV(PC1);
+}
+
+static inline void toggle_dirty_led(void) {
+  PINC |= _BV(PC1);
+}
+
+#  define IEC_INPUT             PINA
+#  define IEC_DDR               DDRA
+#  define IEC_PORT              PORTA
+#  define IEC_PIN_ATN           PA0
+#  define IEC_PIN_DATA          PA1
+#  define IEC_PIN_CLOCK         PA2
+#  define IEC_PIN_SRQ           PA3
+#  define IEC_SEPARATE_OUT
+#  define IEC_OPIN_ATN          PA4
+#  define IEC_OPIN_DATA         PA5
+#  define IEC_OPIN_CLOCK        PA6
+#  define IEC_OPIN_SRQ          PA7
+#  define IEC_ATN_INT_VECT      PCINT0_vect
+#  define IEC_PCMSK             PCMSK0
+
+static inline void iec_interrupts_init(void) {
+  PCICR |= _BV(PCIE0);
+  PCIFR |= _BV(PCIF0);
+}
+
+#  define BUTTON_NEXT           _BV(PC3)
+#  define BUTTON_PREV           _BV(PC2)
+
+static inline rawbutton_t buttons_read(void) {
+  return PINC & (BUTTON_NEXT | BUTTON_PREV);
+}
+
+static inline void buttons_init(void) {
+  DDRC  &= (uint8_t)~(BUTTON_NEXT | BUTTON_PREV);
+  PORTC |= BUTTON_NEXT | BUTTON_PREV;
+}
+
+#  define SOFTI2C_PORT          PORTC
+#  define SOFTI2C_PIN           PINC
+#  define SOFTI2C_DDR           DDRC
+#  define SOFTI2C_BIT_SCL       PC4
+#  define SOFTI2C_BIT_SDA       PC5
+#  define SOFTI2C_BIT_INTRQ     PC6
+#  define SOFTI2C_DELAY         6
+
 #else
 #  error "CONFIG_HARDWARE_VARIANT is unset or set to an unknown value."
 #endif

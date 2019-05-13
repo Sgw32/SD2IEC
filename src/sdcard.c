@@ -324,7 +324,7 @@ DSTATUS sd_status(BYTE drv) {
     }
   } else
 #endif
-  if (sdcard_detect())
+  if (1)//(sdcard_detect())
     if (sdcard_wp())
       return STA_PROTECT;
     else
